@@ -39,12 +39,6 @@ library(plyr)
 animals$OutCatg<- revalue(animals$OutCatg, c("FOSTER"="OTHER","INVENTORY"="OTHER","RTO"="OTHER",
                            "TRANSFER"="OTHER","UNKNOWN"="OTHER"))
 
-#Revalue Microchip is "NONE" for the NA.
-for(i in 1:nrow(animals)){
-  if(is.na(animals$Microchip.Status[i])){
-    animals$Microchip.Status[i] <- "NONE"
-  }
-}
 
 animals$Intake.Type <- as.factor(animals$Intake.Type)
 
