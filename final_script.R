@@ -52,3 +52,17 @@ rf_preds <- predict(first_model,newdata=animals,type="prob")
 
 table(multinomial_preds,animals$OutCatg)
 table(rf_preds,animals$OutCatg)
+
+prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
+# Shelter is definitely a significant predictor
+
+# Microchip status to Yes or No
+levels(animals$Microchip.Status) <- "Yes"
+animals$Microchip.Status <- as.character(animals$Microchip.Status)
+animals$Microchip.Status[which(is.na(animals$Microchip.Status)==T)] <- "No"
+animals$Microchip.Status <- as.factor(animals$Microchip.Status)
+
+table(animals$Microchip.Status, animals$OutCatg)
+# Whether or not they have microchip is a significant predictor
+
+
