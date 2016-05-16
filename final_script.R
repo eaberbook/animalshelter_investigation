@@ -31,7 +31,6 @@ animals$Microchip.Age <- as.numeric(animals$Microchip.Age)
 
 
 # Attempt 1.
-animals_no_na <- na.omit(animals)
 animals$OutCatg <- as.factor(animals$OutCatg)
 animals$Shelter <- as.factor(animals$Shelter)
 
