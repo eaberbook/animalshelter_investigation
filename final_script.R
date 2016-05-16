@@ -38,6 +38,7 @@ library(plyr)
 animals$OutCatg<- revalue(animals$OutCatg, c("FOSTER"="OTHER","INVENTORY"="OTHER","RTO"="OTHER",
                            "TRANSFER"="OTHER","UNKNOWN"="OTHER"))
 
+animals$Intake.Zip.Code <- as.factor(animals$Intake.Zip.Code)
 
 animals$Intake.Type <- as.factor(animals$Intake.Type)
 
