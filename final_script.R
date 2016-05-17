@@ -65,4 +65,12 @@ animals$Microchip.Status <- as.factor(animals$Microchip.Status)
 table(animals$Microchip.Status, animals$OutCatg)
 # Whether or not they have microchip is a significant predictor
 
+#trying an improved random forest with microchip status and shelter.
+
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Shelter+Microchip.Status+Shelter,data=animals,type="classification",na.action=na.omit)
+
+improved_rf_preds <- predict(improved_rf,newdata=animals,type="response")
+table(improved_rf_preds,animals$OutCatg)
+
+
 
