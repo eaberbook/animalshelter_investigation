@@ -13,9 +13,6 @@ animals <- clean_data(animals)
 real_test <- clean_data(real_test)
 
 
-
-
-
 # BASIC DATA EXPLORATION
 
 # Is Shelter a significant predictor?
@@ -38,6 +35,7 @@ test <- animals[-trainindex,]
 
 # MULTINOMIAL MODEL
 
+library(nnet)
 multinomial_model <- multinom(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status
                               +Shelter,data=train)
 
@@ -51,19 +49,37 @@ table(multinomial_preds,test$OutCatg)
 
 
 # RANDOM FOREST MODEL
-
+library(randomForest)
 improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=train,type="classification",importance=TRUE,na.action=na.exclude)
 print(improved_rf)
 improved_rf_preds <- predict(improved_rf,newdata=test,type="response")
 rf_table<-table(improved_rf_preds,test$OutCatg)
 class_rate(rf_table)
 
+
+# This is how I bound random forest for export
 final_rf_probs <- predict(improved_rf,newdata=real_test,type="prob")
 final_rf_probs <- as.data.frame(final_rf_probs)
 ARN<-real_test$ARN
 final_frame<-cbind(ARN,final_rf_probs)
 row.names(final_frame)<-NULL
 write.csv(final_frame,file="finalpredictions")
+
+# Using the caret library for some stuff
+library(caret)
+
+
+av_nnet <- avNNet(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=animals,type="classification",size=10)
+av_nnet_predictions <- predict(av_nnet,real_test)
+
+
+# Binding av_nnet for export
+final_frame <- cbind(real_test$ARN,av_nnet_predictions)
+write.csv(final_frame,file="finalpredictions.csv")
+
+# Knn
+knn_model<-knn3(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=train)
+knn_preds <- predict.knn3(knn_model,newdata=test)
 
 # CLASSIFICATION RATE FUNCTION
 
@@ -124,7 +140,7 @@ clean_data<-function(animals){
   
   # Creating a year variable to see if significant
   animals$Year <- format(animals$Outcome.Date,'%Y')
-  animals$Year <- as.numeric(animals$Year)
+  animals$Year <- as.factor(animals$Year)
     
   # Turning NA's to 0's in some of the columns.
   # Days.In.Shelter. Replace NA's with 0's.
@@ -132,10 +148,8 @@ clean_data<-function(animals){
   # Intake.Age. For this we replace NA's with 
   animals$Intake.Age[is.na(animals$Intake.Age)]<-mean(animals$Intake.Age,na.rm=TRUE)
   # Year
-  animals$Year[is.na(animals$Year)]<-mean(animals$Year,na.rm=TRUE)
-  
+  animals$Year[is.na(animals$Year)]<-2011
   return(animals)
-  
 }
 
 
