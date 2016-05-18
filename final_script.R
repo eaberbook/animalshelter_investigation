@@ -70,7 +70,12 @@ library(caret)
 
 
 av_nnet <- avNNet(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=animals,type="classification",size=10)
-av_nnet_predictions <- predict(av_nnet,real_test)
+av_nnet_predictions <- predict(av_nnet,real_test,type="class")
+
+# Neural network here is giving me an 80% prediction.
+
+av_nnet_predictions2 <- predict(av_nnet,test,type="class")
+table(av_nnet_predictions2,test$OutCatg)
 
 
 # Binding av_nnet for export
