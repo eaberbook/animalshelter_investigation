@@ -65,26 +65,17 @@ attach(zipcode)
 #}
 
 #}
-
-animals$latitude <- as.factor(animals$latitude)
-
-animals$city <- as.factor(animals$city)
-
+#animals$latitude <- as.factor(animals$latitude)
+#animals$city <- as.factor(animals$city)
 
 animals$Intake.Type <- as.factor(animals$Intake.Type)
 
 
-multinomial_model <- multinom(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status
-                              +Shelter,data=animals)
-
-multinomial_preds <- predict(multinomial_model,newdata=animals,type="class")
-
-
-table(multinomial_preds,animals$OutCatg)
-
-
-prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
-# Shelter is definitely a significant predictor
+# SPLITTING INTO TEST AND TRAIN
+index <- 1:nrow(animals)
+trainindex <- sample(index,trunc(length(index)/2))
+train <- animals[trainindex,]
+test <- animals[-trainindex,]
 
 # Microchip status to Yes or No
 levels(animals$Microchip.Status) <- "Yes"
@@ -98,18 +89,33 @@ animals$Year <- format(animals$Outcome.Date,'%Y')
 animals$Year <- as.numeric(animals$Year)
 table(animals$Year,animals$OutCatg)
 
+# Is Shelter a significant predictor?
+prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
+
+
+# Is having a microchip a significant predictor?
 table(animals$Microchip.Status, animals$OutCatg)
-# Whether or not they have microchip is a significant predictor
 
-#trying an improved random forest with microchip status and shelter.
 
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=animals,type="classification",na.action=na.omit)
+# Multinomial model
 
-improved_rf_preds <- predict(improved_rf,newdata=animals,type="response")
-table(improved_rf_preds,animals$OutCatg)
+multinomial_model <- multinom(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status
+                              +Shelter,data=train)
+
+multinomial_preds <- predict(multinomial_model,newdata=test,type="class")
+
+table(multinomial_preds,test$OutCatg)
+
+
+# Trying an improved random forest with year as a categorical predictor as well
+
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=train,type="classification",na.action=na.omit)
+
+improved_rf_preds <- predict(improved_rf,newdata=test,type="response")
+table(improved_rf_preds,test$OutCatg)
 
 # Test Percentages : 
-# Current percentage to beat : 78.6%. Random Forest Classification Rate
-# Multinomial Model : 70.5% Classification rate
+# Current percentage to beat : 75.2%. Random Forest Classification Rate
+# Multinomial Model : 70.7% Classification rate
 
 # Next : Try principal components regression
