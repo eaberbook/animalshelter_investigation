@@ -70,13 +70,6 @@ attach(zipcode)
 
 animals$Intake.Type <- as.factor(animals$Intake.Type)
 
-
-# SPLITTING INTO TEST AND TRAIN
-index <- 1:nrow(animals)
-trainindex <- sample(index,trunc(length(index)/2))
-train <- animals[trainindex,]
-test <- animals[-trainindex,]
-
 # Microchip status to Yes or No
 levels(animals$Microchip.Status) <- "Yes"
 animals$Microchip.Status <- as.character(animals$Microchip.Status)
@@ -95,6 +88,13 @@ prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
 
 # Is having a microchip a significant predictor?
 table(animals$Microchip.Status, animals$OutCatg)
+
+
+# SPLITTING INTO TEST AND TRAIN
+index <- 1:nrow(animals)
+trainindex <- sample(index,trunc(length(index)/2))
+train <- animals[trainindex,]
+test <- animals[-trainindex,]
 
 
 # Multinomial model
