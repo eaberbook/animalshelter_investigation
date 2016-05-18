@@ -112,10 +112,25 @@ table(multinomial_preds,test$OutCatg)
 improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=train,type="classification",na.action=na.omit)
 
 improved_rf_preds <- predict(improved_rf,newdata=test,type="response")
-table(improved_rf_preds,test$OutCatg)
+a<-table(improved_rf_preds,test$OutCatg)
 
-# Test Percentages : 
-# Current percentage to beat : 75.2%. Random Forest Classification Rate
-# Multinomial Model : 70.7% Classification rate
+
+class_rate<-function(table){
+  total = 0;
+  classification=0
+  for(i in 1:3){
+    for(j in 1:3){
+      if(i==j){
+       classification = classification + table[i,j] 
+      }
+      total = total + table[i,j]
+    }
+  }
+  return (classification/total)
+}
+
+# We need to make sure we're doing the right thing with NA values
+# Because right now, we only have an output of 52434 instead of 56949 classifications
+
 
 # Next : Try principal components regression
