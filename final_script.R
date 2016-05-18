@@ -40,18 +40,48 @@ animals$OutCatg<- revalue(animals$OutCatg, c("FOSTER"="OTHER","INVENTORY"="OTHER
 
 animals$Intake.Zip.Code <- as.factor(animals$Intake.Zip.Code)
 
+# Using the zipcode package
+
+library(zipcode)
+attach(zipcode)
+
+#for(i in 1:nrow(animals)){
+  
+#if((animals$Intake.Zip.Code[i]!=0 && (dim(zipcode[which(zipcode$zip==animals$Intake.Zip.Code[i]),])[1]!=0))){
+
+
+#animal_city <- zipcode[which(zipcode$zip==animals$Intake.Zip.Code[i]),]$city  
+#animals$city[i] <- animal_city
+
+#animal_state <- zipcode[which(zipcode$zip==animals$Intake.Zip.Code[i]),]$state
+#animals$state[i] <- animal_state
+
+#animal_latitude <- zipcode[which(zipcode$zip==animals$Intake.Zip.Code[i]),]$latitude
+#animals$latitude[i] <- animal_latitude
+
+#animal_longitude <- zipcode[which(zipcode$zip==animals$Intake.Zip.Code[i]),]$longitude
+#animals$longitude[i] <- animal_longitude
+
+#}
+
+#}
+
+animals$latitude <- as.factor(animals$latitude)
+
+animals$city <- as.factor(animals$city)
+
+
 animals$Intake.Type <- as.factor(animals$Intake.Type)
 
-first_model <- randomForest(OutCatg~Days.In.Shelter +Intake.Age+Sex+Intake.Type+Species,data=animals,type="classification",na.action=na.omit)
 
-multinomial_model <- multinom(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species,data=animals)
+multinomial_model <- multinom(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status
+                              +Shelter,data=animals)
 
 multinomial_preds <- predict(multinomial_model,newdata=animals,type="class")
 
-rf_preds <- predict(first_model,newdata=animals,type="prob")
 
 table(multinomial_preds,animals$OutCatg)
-table(rf_preds,animals$OutCatg)
+
 
 prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
 # Shelter is definitely a significant predictor
@@ -62,15 +92,24 @@ animals$Microchip.Status <- as.character(animals$Microchip.Status)
 animals$Microchip.Status[which(is.na(animals$Microchip.Status)==T)] <- "No"
 animals$Microchip.Status <- as.factor(animals$Microchip.Status)
 
+
+# Creating a year variable to see if significant
+animals$Year <- format(animals$Outcome.Date,'%Y')
+animals$Year <- as.numeric(animals$Year)
+table(animals$Year,animals$OutCatg)
+
 table(animals$Microchip.Status, animals$OutCatg)
 # Whether or not they have microchip is a significant predictor
 
 #trying an improved random forest with microchip status and shelter.
 
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Shelter+Microchip.Status+Shelter,data=animals,type="classification",na.action=na.omit)
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year,data=animals,type="classification",na.action=na.omit)
 
 improved_rf_preds <- predict(improved_rf,newdata=animals,type="response")
 table(improved_rf_preds,animals$OutCatg)
 
+# Test Percentages : 
+# Current percentage to beat : 78.6%. Random Forest Classification Rate
+# Multinomial Model : 70.5% Classification rate
 
-
+# Next : Try principal components regression
