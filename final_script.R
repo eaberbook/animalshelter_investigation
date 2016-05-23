@@ -17,7 +17,7 @@ real_test <- clean_data(real_test)
 animal_breed <- cbind(as.character(animals$Primary.Breed),as.character(animals$OutCatg))
 a<-melt(animal_breed, id.vars="OutCatg")
 
-# BASIC DATA EXPLORATION
+# BASIC DATA EXPLORATIONexpens
 
 # Is Shelter a significant predictor?
 prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
@@ -43,6 +43,7 @@ table(animals$License.Status, animals$OutCatg)
 
 
 # SPLITTING INTO TEST AND TRAIN
+set.seed(101)
 index <- 1:nrow(animals)
 trainindex <- sample(index,trunc(length(index)/2))
 train <- animals[trainindex,]
@@ -65,20 +66,39 @@ table(multinomial_preds,test$OutCatg)
 
 
 # RANDOM FOREST MODEL
+
 library(randomForest)
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Age+SN.Status+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year+License.Status,data=animals,type="classification",
-                            ntree=1000,mtry=5)
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Neuter+Intake.Age+SN.Status+Sex+Intake.Type+Species+IsYoung+Microchip.Status+Shelter+Year+No_Name,data=train,type="classification",
+                            ntree=1250,mtry=4)
+
+# Trying to beat 82.9% testing error.
+
+
+
+varImpPlot(improved_rf)
+test_preds <- predict(improved_rf,newdata=test)
+table(test_preds,test$OutCatg)
+
+
+relevant_names <- c("Days.In.Shelter","Neuter","Intake.Age","SN.Status","Sex","Intake.Type","Species","Microchip.Status","Shelter","Year",
+                    "License.Status","No_Name","No_Color","IsYoung")
+new_frame<-animals[,relevant_names]
+response <- animals$OutCatg
+tuned_model <- tuneRF(new_frame,response,mtryStart=4,method="rf",plot=TRUE)
+
+
 
 # Calculation of variable importance, trying the varImp function.
-varImp(improved_rf)
 
 
-print(improved_rf)
+
 improved_rf_preds <- predict(improved_rf,newdata=real_test,type="prob")
-rf_table<-table(improved_rf_preds,test$OutCatg)
+
+
+rf_table<-data.frame(improved_rf_preds,animals$OutCatg)
 class_rate(rf_table)
 
-final_frame <- cbind(ARN,improved_rf_preds)
+final_frame <- data.frame(ARN,improved_rf_preds)
 write.csv(final_frame,file="finalpredictions.csv")
 
 
@@ -91,34 +111,29 @@ final_frame<-rbind(real_test$ARN,improved_rf_preds)
 row.names(final_frame)<-NULL
 
 # Using the caret library for some stuff
+
 library(caret)
 
-
-av_nnet <- avNNet(OutCatg~Days.In.Shelter+Intake.Age+Sex+Intake.Type+Species+Microchip.Status+Shelter+Year+License.Status,data=animals,type="classification",size=12)
-av_nnet_predictions <- predict(av_nnet,real_test)
+av_nnet <- avNNet(OutCatg~Days.In.Shelter+Neuter+Intake.Age+SN.Status+Sex+Intake.Type+Species+IsYoung+Microchip.Status+Shelter+Year+No_Name,data=animals,type="classification",size=12)
+av_nnet_predictions <- predict(av_nnet,real_test,type="prob")
 
 # Neural network here is giving me an 79.5% prediction.
 
-av_nnet_predictions2 <- predict(av_nnet,test,type="class")
-table(av_nnet_predictions2,test$OutCatg)
+av_nnet_predictions2 <- predict(av_nnet,animals,type="class")
+table(av_nnet_predictions2,animals$OutCatg)
+
 
 
 ARN <-real_test$ARN
 
-final_frame <- cbind(ARN,bag_fda_preds)
-
+final_frame <- data.frame(ARN,av_nnet_predictions)
 
 # Binding av_nnet for export
+
 final_frame <- cbind(ARN,av_nnet_predictions)
 write.csv(final_frame,file="finalpredictions.csv")
 
-breed_list <- as.character(significant_breeds$Var1)
-
-significant_breeds <- summary[which(summary$Freq>0.40),]
-
-significant_breeds <- significant_breeds[which(reference_table$Freq>20),]
-significant_breeds <- na.omit(significant_breeds)
-
+# Train Function
 
 animals$Catg_Pred <- as.factor(animals$Catg_Pred)
 table(animals$Catg_Pred,animals$OutCatg)
@@ -162,12 +177,29 @@ clean_data<-function(animals){
   animals$License.Status[is.na(animals$License.Status)]<-"Yes"
   animals$License.Status <- as.factor(animals$License.Status)
   
+  # S.N. status to Yes or No
+  
   animals$SN.Status[which(is.na(animals$S.N.Date)==T)]<-"No"
   animals$SN.Status[is.na(animals$SN.Status)]<-"Yes"
   animals$SN.Status <- as.factor(animals$SN.Status)
   
-  # S.N. status to Yes or No
+  # Does the animal have a name
+  animals$No_Name <- as.character(animals$NAME)
+  animals$No_Name[which(is.na(animals$No_Name))]<-"Yes"
+  animals$No_Name[which(animals$No_Name!="Yes")]<-"No"
+  animals$No_Name <- as.factor(animals$No_Name)
   
+  # Does the animal have a defined color
+  animals$No_Color <- as.character(animals$Color.Markings)
+  animals$No_Color[which(is.na(animals$No_Color))]<-"Yes"
+  animals$No_Color[which(animals$No_Color!="Yes")]<-"No"
+  animals$No_Color <- as.factor(animals$No_Color)
+  
+  # Is the animal a puppy/kitten
+  animals$IsYoung[animals$Intake.Age<365] <- "Yes"
+  animals$IsYoung[animals$Intake.Age>=365] <- "No"
+  animals$IsYoung[which(is.na(animals$Intake.Age))] <- "U"
+  animals$IsYoung <- factor(animals$IsYoung)
   
   # Creating a year variable to see if significant
   animals$Year <- format(animals$Outcome.Date,'%Y')
@@ -176,6 +208,10 @@ clean_data<-function(animals){
   #Creating a month variable to see if significant
   animals$Month <- format(animals$Outcome.Date,'%m')
   animals$Month <- as.numeric(animals$Month)
+  
+  # Creating a neuter variable
+  animals$Neuter <- as.factor(animals$Sex)
+  levels(animals$Neuter)<- c("NO","NO","YES","YES","U")
 
   
   # Turning NA's to 0's in some of the columns.
