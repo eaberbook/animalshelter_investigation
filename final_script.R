@@ -54,14 +54,25 @@ table(multinomial_preds,test$OutCatg)
 # RANDOM FOREST MODEL
 
 library(randomForest)
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Sex+Intake.Age+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+No_Breed+Shelter+Year+No_Name,
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Sex+Intake.Age+Month+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+SN.Status+No_Breed+Shelter+Year+No_Name,
                             data=animals,type="classification",
                             ntree=1000,mtry=4,nodesize=12)
 
+varImpPlot(improved_rf)
+
+relevant_names <- c("Days.In.Shelter","Sex","Neuter","License.Status","Intake.Age","Intake.Type","Species","Microchip.Status","Shelter","Year",
+                    "No_Name","Outcome.Weekday","LifeStage","No_Breed","Month","SN.Status")
+new_frame<-animals[,relevant_names]
+response <- animals$OutCatg
+tuned_model <- tuneRF(new_frame,response,mtryStart=4,method="rf",plot=TRUE)
+
+
+
 test_preds <- predict(improved_rf,newdata=real_test,type="prob")
-table(test_preds,t)
+table(test_preds,animals$OutCatg)
 
 final_frame <- data.frame(ARN,test_preds)
+
 
 # Trying to beat 83.96% testing classification rate.
 
@@ -78,7 +89,7 @@ varImpPlot(improved_rf)
 
 
 
-relevant_names <- c("Days.In.Shelter","Neuter","License.Status","Intake.Age","SN.Status","Intake.Type","Species","Microchip.Status","Shelter","Year",
+relevant_names <- c("Days.In.Shelter","Neuter","Month","License.Status","Intake.Age","SN.Status","Intake.Type","Species","Microchip.Status","Shelter","Year",
                     "No_Name")
 new_frame<-animals[,relevant_names]
 response <- animals$OutCatg
