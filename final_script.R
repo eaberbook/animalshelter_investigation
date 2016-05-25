@@ -17,19 +17,6 @@ real_test <- clean_data(real_test)
 animal_breed <- cbind(as.character(animals$Primary.Breed),as.character(animals$OutCatg))
 a<-melt(animal_breed, id.vars="OutCatg")
 
-# BASIC DATA EXPLORATIONexpens
-
-# Is Shelter a significant predictor?
-prop.table(table(animals$Shelter, animals$OutCatg), margin=1)
-data.frame(prop.table(table(animals$Shelter,animals$OutCatg),margin=1))
-
-# Summarizing data by primary breed
-
-reference_table <- table(animals$Primary.Breed,animals$OutCatg)
-reference_table <- data.frame(reference_table)
-#reference_table$total <- rowSums(reference_table)
-summary <- data.frame(prop.table(table(animals$Primary.Breed,animals$OutCatg),margin=1))
-
 
 
 # Is having a microchip a significant predictor?
@@ -64,24 +51,35 @@ write.csv(final_frame,file="finalpredictions")
 
 table(multinomial_preds,test$OutCatg)
 
-
 # RANDOM FOREST MODEL
 
 library(randomForest)
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Neuter+Intake.Age+SN.Status+Sex+Intake.Type+Species+IsYoung+Microchip.Status+Shelter+Year+No_Name,data=train,type="classification",
-                            ntree=1250,mtry=4)
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Sex+Intake.Age+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+No_Breed+Shelter+Year+No_Name,
+                            data=animals,type="classification",
+                            ntree=1000,mtry=4,nodesize=12)
 
-# Trying to beat 82.9% testing error.
+test_preds <- predict(improved_rf,newdata=real_test,type="prob")
+table(test_preds,t)
 
+final_frame <- data.frame(ARN,test_preds)
+
+# Trying to beat 83.96% testing classification rate.
+
+
+# Trying gbm 
+gbm_model <- gbm(OutCatg~Days.In.Shelter+Neuter+Intake.Age+SN.Status+Sex+Intake.Type+License.Status+Species+Microchip.Status+Shelter+Year+No_Name,
+                 data=train,n.trees=500,distribution="multinomial")
+
+table(gbm_pred,test$OutCatg)
 
 
 varImpPlot(improved_rf)
-test_preds <- predict(improved_rf,newdata=test)
-table(test_preds,test$OutCatg)
 
 
-relevant_names <- c("Days.In.Shelter","Neuter","Intake.Age","SN.Status","Sex","Intake.Type","Species","Microchip.Status","Shelter","Year",
-                    "License.Status","No_Name","No_Color","IsYoung")
+
+
+relevant_names <- c("Days.In.Shelter","Neuter","License.Status","Intake.Age","SN.Status","Intake.Type","Species","Microchip.Status","Shelter","Year",
+                    "No_Name")
 new_frame<-animals[,relevant_names]
 response <- animals$OutCatg
 tuned_model <- tuneRF(new_frame,response,mtryStart=4,method="rf",plot=TRUE)
@@ -92,7 +90,7 @@ tuned_model <- tuneRF(new_frame,response,mtryStart=4,method="rf",plot=TRUE)
 
 
 
-improved_rf_preds <- predict(improved_rf,newdata=real_test,type="prob")
+improved_rf_preds <- predict(improved_rf,newdata=real_test,type="")
 
 
 rf_table<-data.frame(improved_rf_preds,animals$OutCatg)
@@ -114,8 +112,11 @@ row.names(final_frame)<-NULL
 
 library(caret)
 
-av_nnet <- avNNet(OutCatg~Days.In.Shelter+Neuter+Intake.Age+SN.Status+Sex+Intake.Type+Species+IsYoung+Microchip.Status+Shelter+Year+No_Name,data=animals,type="classification",size=12)
-av_nnet_predictions <- predict(av_nnet,real_test,type="prob")
+av_nnet <- avNNet(OutCatg~Days.In.Shelter+Sex+Intake.Age+Neuter+SN.Status+Intake.Type+License.Status+Species+Microchip.Status+Shelter+Year+No_Name,size=5,data=train,type="classification")
+
+av_nnet_predictions <- predict(av_nnet,test,type="class")
+table(av_nnet_predictions,test$OutCatg)
+
 
 # Neural network here is giving me an 79.5% prediction.
 
@@ -153,13 +154,15 @@ clean_data<-function(animals){
   # Days animal spent in shelter
   animals$Days.In.Shelter <- animals$Outcome.Date - animals$Intake.Date
   animals$Days.In.Shelter <- as.numeric(animals$Days.In.Shelter)
+  
   # Age at Intake
   animals$Intake.Age <- animals$Intake.Date - animals$DOB
   animals$Intake.Age <- as.numeric(animals$Intake.Age)
   
-  # Age at Microchip
-  animals$Microchip.Age <- animals$Microchip.Date - animals$DOB
-  animals$Microchip.Age <- as.numeric(animals$Microchip.Age)
+  # Outcome Age
+  animals$Outcome.Age <- animals$Outcome.Date - animals$DOB
+  animals$Outcome.Age <- as.numeric(animals$Outcome.Age)
+  
   
   # Turning strings into categorical variables
 
@@ -195,11 +198,17 @@ clean_data<-function(animals){
   animals$No_Color[which(animals$No_Color!="Yes")]<-"No"
   animals$No_Color <- as.factor(animals$No_Color)
   
-  # Is the animal a puppy/kitten
-  animals$IsYoung[animals$Intake.Age<365] <- "Yes"
-  animals$IsYoung[animals$Intake.Age>=365] <- "No"
-  animals$IsYoung[which(is.na(animals$Intake.Age))] <- "U"
-  animals$IsYoung <- factor(animals$IsYoung)
+  # Does the animal have a breed
+  animals$No_Breed <- as.character(animals$Primary.Breed)
+  animals$No_Breed[which(is.na(animals$No_Breed))]<-"Yes"
+  animals$No_Breed[which(animals$No_Breed!="Yes")]<-"No"
+  animals$No_Breed <- as.factor(animals$No_Breed)
+  
+  animals$Outcome.Weekday <- wday(animals$Outcome.Date)
+  animals$Outcome.Weekday <- as.factor(animals$Outcome.Weekday)
+  
+
+
   
   # Creating a year variable to see if significant
   animals$Year <- format(animals$Outcome.Date,'%Y')
@@ -212,6 +221,10 @@ clean_data<-function(animals){
   # Creating a neuter variable
   animals$Neuter <- as.factor(animals$Sex)
   levels(animals$Neuter)<- c("NO","NO","YES","YES","U")
+  
+  # Now that we have extracted neutered, let's
+  # Switch neutered back to male, and spayed back to female
+  levels(animals$Sex) <- c("F","M","M","F","U")
 
   
   # Turning NA's to 0's in some of the columns.
@@ -220,9 +233,18 @@ clean_data<-function(animals){
   # Intake.Age. For this we replace NA's with 
   animals$Intake.Age[is.na(animals$Intake.Age)]<-mean(animals$Intake.Age,na.rm=TRUE)
   # Year
+  animals$Outcome.Age[is.na(animals$Outcome.Age)] <- mean(animals$Outcome.Age,na.rm=TRUE)
   animals$Year[is.na(animals$Year)]<-2011
   animals$Month[is.na(animals$Month)]<-7
   animals$Month <- as.factor(animals$Month)
+  animals$Outcome.Weekday[is.na(animals$Outcome.Weekday)] <- 4
+  
+  
+  animals$LifeStage[animals$Intake.Age < 365] <- "young"
+  animals$LifeStage[animals$Intake.Age >= 365] <- "adult"
+  animals$LifeStage[animals$Intake.Age >= 5110] <- "old"
+  animals$LifeStage <- as.factor(animals$LifeStage)
+  
   return(animals)
 }
 
