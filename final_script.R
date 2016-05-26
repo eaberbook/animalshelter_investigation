@@ -256,6 +256,11 @@ clean_data<-function(animals){
   animals$LifeStage[animals$Intake.Age >= 5110] <- "old"
   animals$LifeStage <- as.factor(animals$LifeStage)
   
+  # Creating an Intake.Area Variable
+  # The break points were chosen from quantiles to maximize predictive power.
+  animals$Intake.Area <- cut(animals$Intake.Zip.Code, breaks=c(-1,90063,90247,91042,99999))
+  levels(animals$Intake.Area) <- c("Area1","Area2","Area3","Area2")
+  
   return(animals)
 }
 
