@@ -54,7 +54,7 @@ table(multinomial_preds,test$OutCatg)
 # RANDOM FOREST MODEL
 
 library(randomForest)
-improved_rf <- randomForest(OutCatg~Days.In.Shelter+Sex+Intake.Age+Month+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+SN.Status+No_Breed+Shelter+Year+No_Name,
+improved_rf <- randomForest(OutCatg~Days.In.Shelter+Intake.Area+Simple_Color1+Simple_Color2+Sex+Intake.Age+Month+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+SN.Status+No_Breed+Shelter+Year+No_Name,
                             data=animals,type="classification",
                             ntree=1000,mtry=4,nodesize=12)
 
@@ -72,6 +72,8 @@ test_preds <- predict(improved_rf,newdata=real_test,type="prob")
 table(test_preds,animals$OutCatg)
 
 final_frame <- data.frame(ARN,test_preds)
+
+write.csv(final_frame,file="finalpredictions.csv")
 
 
 # Trying to beat 83.96% testing classification rate.
@@ -108,7 +110,7 @@ rf_table<-data.frame(improved_rf_preds,animals$OutCatg)
 class_rate(rf_table)
 
 final_frame <- data.frame(ARN,improved_rf_preds)
-write.csv(final_frame,file="finalpredictions.csv")
+
 
 
 # This is how I bound random forest for export
@@ -123,10 +125,11 @@ row.names(final_frame)<-NULL
 
 library(caret)
 
-av_nnet <- avNNet(OutCatg~Days.In.Shelter+Sex+Intake.Age+Neuter+SN.Status+Intake.Type+License.Status+Species+Microchip.Status+Shelter+Year+No_Name,size=5,data=train,type="classification")
+av_nnet <- avNNet(OutCatg~Days.In.Shelter+General.Zip+Sex+Intake.Age+Month+Neuter+Intake.Type+License.Status+Species+Microchip.Status+Outcome.Age+Outcome.Weekday+LifeStage+SN.Status+No_Breed+Shelter+Year+No_Name,
+                  data=animals,size=10,type="classification")
 
-av_nnet_predictions <- predict(av_nnet,test,type="class")
-table(av_nnet_predictions,test$OutCatg)
+av_nnet_predictions <- predict(av_nnet,real_test,type="prob")
+table(av_nnet_predictions,animals$OutCatg)
 
 
 # Neural network here is giving me an 79.5% prediction.
@@ -160,6 +163,8 @@ clean_data<-function(animals){
   animals$Outcome.Date <- as.Date(animals$Outcome.Date)
   animals$Microchip.Date <- as.Date(animals$Microchip.Date)
   
+  animals$Intake.Zip.Code <- factor(animals$Intake.Zip.Code)
+  
   #### Start to create some meaningful dates.
   
   # Days animal spent in shelter
@@ -173,6 +178,12 @@ clean_data<-function(animals){
   # Outcome Age
   animals$Outcome.Age <- animals$Outcome.Date - animals$DOB
   animals$Outcome.Age <- as.numeric(animals$Outcome.Age)
+  
+  animals$General.Zip <- substr(animals$Intake.Zip.Code,1,2)
+  animals$General.Zip <- as.numeric(animals$General.Zip)
+  animals$General.Zip[which(animals$General.Zip<90)] <- 0
+  animals$General.Zip[which(animals$General.Zip>91)] <- 0
+  animals$General.Zip <- as.factor(animals$General.Zip)
   
   
   # Turning strings into categorical variables
@@ -218,7 +229,9 @@ clean_data<-function(animals){
   animals$Outcome.Weekday <- wday(animals$Outcome.Date)
   animals$Outcome.Weekday <- as.factor(animals$Outcome.Weekday)
   
-    # Trying Simple Color.
+  
+  
+  # Trying Simple Color.
   animals$Simple_Color2 <- 
     lapply(strsplit(as.character(animals$Color.Markings),"\\/"),"[",2)
   animals$Simple_Color1 <- 
@@ -228,13 +241,12 @@ clean_data<-function(animals){
   animals$Simple_Color1 <- trim.trailing(animals$Simple_Color1)
   
   animals$Simple_Color2 <- as.character(animals$Simple_Color2)
-  animals$Simple_Color1 == animals$Simple_Color2
-  
   animals$Simple_Color1 <- as.character(animals$Simple_Color1)
+  animals$Simple_Color1[is.na(animals$Simple_Color1)]<-"Unknown"
+  animals$Simple_Color2[is.na(animals$Simple_Color2)]<-"Unknown"
   animals$Simple_Color1 <- as.factor(animals$Simple_Color1)
   animals$Simple_Color2 <- as.factor(animals$Simple_Color2)
   
-
 
   
   # Creating a year variable to see if significant
@@ -272,8 +284,7 @@ clean_data<-function(animals){
   animals$LifeStage[animals$Intake.Age >= 5110] <- "old"
   animals$LifeStage <- as.factor(animals$LifeStage)
   
-  # Creating an Intake.Area Variable
-  # The break points were chosen from quantiles to maximize predictive power.
+  animals$Intake.Zip.Code <- as.numeric(animals$Intake.Zip.Code)
   animals$Intake.Area <- cut(animals$Intake.Zip.Code, breaks=c(-1,90063,90247,91042,99999))
   levels(animals$Intake.Area) <- c("Area1","Area2","Area3","Area2")
   
