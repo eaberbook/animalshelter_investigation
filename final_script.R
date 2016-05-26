@@ -218,6 +218,22 @@ clean_data<-function(animals){
   animals$Outcome.Weekday <- wday(animals$Outcome.Date)
   animals$Outcome.Weekday <- as.factor(animals$Outcome.Weekday)
   
+    # Trying Simple Color.
+  animals$Simple_Color2 <- 
+    lapply(strsplit(as.character(animals$Color.Markings),"\\/"),"[",2)
+  animals$Simple_Color1 <- 
+    lapply(strsplit(as.character(animals$Color.Markings),"\\/"),"[",1)
+  
+  trim.trailing <- function (x) sub("\\s+$","",x)
+  animals$Simple_Color1 <- trim.trailing(animals$Simple_Color1)
+  
+  animals$Simple_Color2 <- as.character(animals$Simple_Color2)
+  animals$Simple_Color1 == animals$Simple_Color2
+  
+  animals$Simple_Color1 <- as.character(animals$Simple_Color1)
+  animals$Simple_Color1 <- as.factor(animals$Simple_Color1)
+  animals$Simple_Color2 <- as.factor(animals$Simple_Color2)
+  
 
 
   
